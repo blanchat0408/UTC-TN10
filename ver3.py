@@ -30,8 +30,6 @@ def devices(consommation: list, production: list, prixElec: list, prixVente: lis
         SoCmax = 1
         SoC = [0] * 24
         Pchar: list[float] = [0] * 24
-        char_par_bat = [0] * 24
-        char_par_pv = [0] * 24
 
     bat = Battery()
     ev = Ev()
@@ -93,7 +91,6 @@ class Maison(Agent):
 
             starttime = randint(7, 17)
             leavetime = randint(starttime+1, 18)
-            print(f"st: {starttime}, lt: {leavetime}")
             self.agent.battery, self.agent.ev = (devices(self.agent.consommation, self.agent.production,
                                                          self.agent.prixlist, self.agent.venteprix,
                                                          starttime, leavetime))
@@ -139,8 +136,6 @@ class Maison(Agent):
             fig_ev_char.plot(range(24), self.agent.ev.Pchar)
             plt.title(f"{self.agent.name}_EV_Charge")
             plt.show()
-            print(f"EV bat power:{self.agent.ev.char_par_bat}")
-            print(f"EV pv power:{self.agent.ev.char_par_pv}")
 
             # consommation excess & production excess
             for t in range(24):
@@ -296,8 +291,6 @@ async def main():
     home1 = Maison("spade02@jabbim.com", "123456")
     await home1.start()
     await spade.wait_until_finished(home1)
-    print(home1.c_t, " ", home1.p_t)
-    print("#" * 100)
     await home1.stop()
 
 

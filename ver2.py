@@ -10,7 +10,7 @@ from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 from fuzzy import effi_dis, effi_char
 
 
-def devices(consommation: list, production: list, prixElec: list, prixVente: list, starttime: int):
+def devices(consommation: list, production: list, prixElec: list, prixVente: list, starttime: int, leavetime: int):
     class Battery:
         SoCmin = 0.2
         SoCmax = 0.8
@@ -29,60 +29,43 @@ def devices(consommation: list, production: list, prixElec: list, prixVente: lis
         Pmax = 5
         SoCmax = 1
         SoC = [0] * 24
-        Pev_a_char: list[float] = [0] * 24
+        Pchar: list[float] = [0] * 24
+
 
     bat = Battery()
     ev = Ev()
+    diff = [0] * 24
 
     for t in range(23):
-        dis = effi_dis(prixElec[t], bat.SoC[t], 8.7, 12.2, 16.2, 18.2)
-        char = effi_char(prixVente[t], bat.SoC[t], 8.7 * 0.9, 12.2 * 0.9, 16.2 * 0.9, 18.2 * 0.9)
-        diff = production[t] - consommation[t]
-        if t >= starttime and ev.SoC[t] < ev.SoCmax:
+        if starttime <= t < leavetime and ev.SoC[t] < ev.SoCmax:
             if t == starttime:
                 ev.SoC[t] = randint(20, 80) / 100
                 ev.Pev_a_char_t = (1 - ev.SoC[t]) * ev.cap
+
             if ev.Pev_a_char_t > 0:
-                # Charge the EV with the maxi power every hour
-                ev.Pev_a_char[t] += min(ev.Pmax, ev.Pev_a_char_t)
+                ev.Pchar[t] = round(min(ev.Pmax, ev.Pev_a_char_t), 2)
+                ev.Pev_a_char_t -= ev.Pchar[t]
+                ev.SoC[t + 1] = round(ev.SoC[t] + ev.Pchar[t] / ev.cap, 2)
 
-                # Consommation includes charging the EV
-                consommation[t] += round(ev.Pev_a_char[t], 2)
-                ev.Pev_a_char_t -= ev.Pev_a_char[t]
-                diff = production[t] - consommation[t]
+        diff[t] = production[t] - consommation[t] - ev.Pchar[t]
 
-                if diff >= 0:
-                    bat.Pdis[t] += min(ev.Pev_a_char[t] - min(ev.Pev_a_char[t], diff), bat.Pmax,
-                                       (bat.SoC[t]-bat.SoCmin) * bat.cap) * dis
-                    diff -= min(diff, ev.Pev_a_char[t])
+        dis_bat = effi_dis(prixElec[t], bat.SoC[t], 8.7, 12.2, 16.2, 18.2)
+        char_bat = effi_char(prixVente[t], bat.SoC[t], 8.7 * 0.9, 12.2 * 0.9, 16.2 * 0.9, 18.2 * 0.9)
 
-                # if diff >= ev.Pev_a_char[t]:
-                #     ev.Pev_a_char[t] -= ev.Pev_a_char[t] * char
-                #     diff -= ev.Pev_a_char[t] * char
-                #     bat.Pdis[t] += ev.Pev_a_char[t] * dis
-                # elif 0 < diff < ev.Pev_a_char[t]:
-                #     ev.Pev_a_char[t] -= diff * char
-                #     diff -= diff * char
-                #     bat.Pdis[t] += ev.Pev_a_char[t] * dis
-                # need only the battery
-
-                else:
-                    bat.Pdis[t] += min(ev.Pev_a_char[t], bat.Pmax, (bat.SoC[t]-bat.SoCmin) * bat.cap, abs(diff)) * dis
-                    diff += bat.Pdis[t]
-                ev.SoC[t + 1] = ev.SoC[t] + ev.Pev_a_char[t] / ev.cap
-
-        if diff <= 0:
+        if diff[t] <= 0:
+            # discharge battery
             if bat.SoC[t] <= bat.SoCmin:
                 bat.Pdis[t] = 0
             else:
-                bat.Pdis[t] += min(bat.Pmax, abs(diff), (bat.SoC[t] - bat.SoCmin) * bat.cap) * dis
+                bat.Pdis[t] = round(min(bat.Pmax, abs(diff[t]), (bat.SoC[t] - bat.SoCmin) * bat.cap) * dis_bat, 2)
         else:
+            # charge battery
             if bat.SoC[t] >= bat.SoCmax:
                 bat.Pchar[t] = 0
             else:
-                bat.Pchar[t] = min(bat.Pmax, diff, (bat.SoCmax - bat.SoC[t]) * bat.cap) * char
+                bat.Pchar[t] = round(min(bat.Pmax, diff[t], (bat.SoCmax - bat.SoC[t]) * bat.cap) * char_bat, 2)
         bat.SoC[t + 1] = round(bat.SoC[t] + ((bat.Pchar[t] * 0.85 - bat.Pdis[t] * 1) / bat.cap), 2)
-    return bat, ev, consommation
+    return bat, ev
 
 
 class Maison(Agent):
@@ -107,12 +90,12 @@ class Maison(Agent):
                     self.agent.production.append(randint(5, 6))
 
             starttime = randint(7, 18)
-            self.agent.battery, self.agent.ev, self.agent.consommation = devices(self.agent.consommation,
-                                                                                 self.agent.production,
-                                                                                 self.agent.prixlist,
-                                                                                 self.agent.venteprix, starttime)
+            leavetime = randint(starttime + 1, 18)
+            self.agent.battery, self.agent.ev = (devices(self.agent.consommation, self.agent.production,
+                                                         self.agent.prixlist, self.agent.venteprix,
+                                                         starttime, leavetime))
 
-            fig_profil = plt.figure(1)
+            fig_profil = plt.figure("profil")
             # figure de consommation
             print(f"Consommation: {self.agent.consommation}")
             fig_c = fig_profil.add_subplot(2, 1, 1)
@@ -126,32 +109,46 @@ class Maison(Agent):
             plt.title(f"{self.agent.name}_Production")
             plt.show()
 
-            fig_de_devices = plt.figure()
+            fig_de_battery = plt.figure("batterie")
             # figure de batterie
-            print(f"Battery: {self.agent.battery.SoC}")
-            fig_soc = plt.subplot(2, 1, 1)
-            fig_soc.plot(range(24), self.agent.battery.SoC)
-            plt.title(f"{self.agent.name}_SoC")
+            print(f"Battery SoC: {self.agent.battery.SoC}")
+            fig_bat_soc = plt.subplot(3, 1, 1)
+            fig_bat_soc.plot(range(24), self.agent.battery.SoC)
+            plt.title(f"{self.agent.name}_Bat_SoC")
+            print(f"Battery charge power: {self.agent.battery.Pchar}")
+            fig_bat_char = plt.subplot(3, 1, 2)
+            fig_bat_char.plot(range(24), self.agent.battery.Pchar)
+            plt.title(f"{self.agent.name}_Bat_Charge")
+            print(f"Battery discharge power: {self.agent.battery.Pdis}")
+            fig_bat_char = plt.subplot(3, 1, 3)
+            fig_bat_char.plot(range(24), self.agent.battery.Pdis)
+            plt.title(f"{self.agent.name}_Bat_Discharge")
+            plt.show()
 
             # figure de EV
-            print(f"EV:{[self.agent.ev.SoC[t] for t in range(24)]}")
-            fig_ev = plt.subplot(2, 1, 2)
-            fig_ev.plot(range(24), self.agent.ev.SoC)
-            plt.title(f"{self.agent.name}_EV")
+            fig_de_EV = plt.figure("EV")
+            print(f"EV SoC:{self.agent.ev.SoC}")
+            fig_ev_soc = plt.subplot(2, 1, 1)
+            fig_ev_soc.plot(range(24), self.agent.ev.SoC)
+            plt.title(f"{self.agent.name}_EV_SoC")
+            print(f"EV power:{self.agent.ev.Pchar}")
+            fig_ev_char = plt.subplot(2, 1, 2)
+            fig_ev_char.plot(range(24), self.agent.ev.Pchar)
+            plt.title(f"{self.agent.name}_EV_Charge")
             plt.show()
+
 
             # consommation excess & production excess
             for t in range(24):
-                diff = self.agent.consommation[t] - self.agent.production[t]
-                if diff > 0:
-                    self.agent.consommation_excess.append(round(diff - self.agent.battery.Pdis[t], 2))
+                diff = self.agent.production[t] - self.agent.consommation[t] - self.agent.ev.Pchar[t]
+                if diff < 0:
+                    self.agent.consommation_excess.append(round(abs(diff) - self.agent.battery.Pdis[t], 2))
                     self.agent.production_excess.append(0)
                 else:
                     self.agent.consommation_excess.append(0)
-                    self.agent.production_excess.append(
-                        round(abs(diff) - self.agent.battery.Pchar[t], 2))
+                    self.agent.production_excess.append(round(diff - self.agent.battery.Pchar[t], 2))
 
-            fig_a_envoyer = plt.figure()
+            fig_a_envoyer = plt.figure("excess")
             # print(f"Battery discharge: {self.agent.battery.Pdis}")
             # figure de consommation excess
             print(f"Consommation excess: {self.agent.consommation_excess}")
@@ -167,8 +164,32 @@ class Maison(Agent):
             plt.show()
 
         async def on_end(self) -> None:
+            self.agent.add_behaviour(self.agent.SaveData())
             self.agent.add_behaviour(self.agent.SendData())
             self.agent.add_behaviour(self.agent.ReceData())
+
+    class SaveData(OneShotBehaviour):
+        async def run(self) -> None:
+            import pandas as pd
+            import os.path
+            data_profil = pd.DataFrame([self.agent.prixlist, self.agent.venteprix,
+                                        self.agent.consommation, self.agent.production,
+                                        self.agent.battery.SoC, self.agent.battery.Pchar, self.agent.battery.Pdis,
+                                        self.agent.ev.SoC, self.agent.ev.Pchar,
+                                        self.agent.consommation_excess,self.agent.production_excess],
+                                       index=["buy price", "sell price",
+                                              "consumption", "production",
+                                              "battery SoC", "Power charge", "Power discharge",
+                                              "EV SoC", "Power charge",
+                                              "Consumption excess", "¨Production excess"],
+                                       columns=range(24))
+            # print(data_profil)
+            path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/{self.agent.name}.xlsx"
+            if os.path.isfile(path):
+                with pd.ExcelWriter(path, mode="a", if_sheet_exists='new') as writer:
+                    data_profil.to_excel(writer)
+            else:
+                data_profil.to_excel(path, float_format="%.2f")
 
     class MkConnection(OneShotBehaviour):
         async def run(self) -> None:
@@ -270,8 +291,6 @@ async def main():
     home1 = Maison("spade02@jabbim.com", "123456")
     await home1.start()
     await spade.wait_until_finished(home1)
-    print(home1.c_t, " ", home1.p_t)
-    print("#" * 100)
     await home1.stop()
 
 
