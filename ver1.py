@@ -1,3 +1,5 @@
+# Without fuzzy logic
+
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
