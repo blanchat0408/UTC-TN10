@@ -1,3 +1,6 @@
+# battery & EV with fuzzy logic
+# price of electricity & state of charge(SoC)
+
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
