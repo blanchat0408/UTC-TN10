@@ -11,8 +11,8 @@ from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 
 from devices import devices
 
-path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/"
-jid_agg = "spade01@jabbim.com"
+path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/"  # change the saving path
+jid_agg = "spade01@jabbim.com"  # change the jid of the aggergator
 
 
 class Maison(Agent):
