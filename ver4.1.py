@@ -1,3 +1,5 @@
+# final version with fuzzy logic & communication
+
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
