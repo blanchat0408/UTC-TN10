@@ -1,3 +1,5 @@
+# use it only with ver4.1.py
+
 from random import randint
 from fuzzy import effi_dis, effi_char
 
