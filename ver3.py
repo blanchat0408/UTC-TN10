@@ -1,5 +1,6 @@
 # version with fuzzy logic
 # for battery & EV
+# Only the tarif sent by aggergator is needed
 
 from random import randint
 from ast import literal_eval
