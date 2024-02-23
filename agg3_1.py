@@ -4,7 +4,7 @@ from spade.message import Message
 from spade.behaviour import OneShotBehaviour, CyclicBehaviour
 from ast import literal_eval
 
-num_maison = 2
+num_maison = 2  # change the number of the houses before using 
 
 
 class Aggregator(Agent):
@@ -224,7 +224,7 @@ class Aggregator(Agent):
 
 
 async def main():
-    agg = Aggregator("spade01@jabbim.com", "123456")
+    agg = Aggregator("spade01@jabbim.com", "123456")  # change the jid and password of the aggergator before using
     await agg.start()
     await spade.wait_until_finished(agg)
     await agg.stop()
