@@ -1,4 +1,5 @@
 # Version without fuzzy logic & communication
+# No need for aggergator
 
 from random import randint
 from ast import literal_eval
