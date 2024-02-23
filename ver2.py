@@ -1,6 +1,3 @@
-# battery with fuzzy logic
-# price of electricity & state of charge(SoC)
-
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
@@ -11,6 +8,8 @@ from spade.message import Message
 from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 
 from fuzzy import effi_dis, effi_char
+path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/"
+
 
 
 def devices(consommation: list, production: list, prixElec: list, prixVente: list, starttime: int, leavetime: int):
@@ -90,7 +89,7 @@ class Maison(Agent):
                 if 0 <= t < 8 or 19 < t <= 23:
                     self.agent.production.append(0)
                 elif 8 <= t <= 19:
-                    self.agent.production.append(randint(5, 6))
+                    self.agent.production.append(randint(2, 6))
 
             starttime = randint(7, 18)
             leavetime = randint(starttime + 1, 18)
@@ -109,6 +108,7 @@ class Maison(Agent):
             print(f"Production: {self.agent.production}")
             fig_p = plt.subplot(2, 1, 2)
             fig_p.plot(range(24), self.agent.production)
+            plt.savefig(path + "figure/" + "profil.png")
             plt.title(f"{self.agent.name}_Production")
             plt.show()
 
@@ -125,6 +125,7 @@ class Maison(Agent):
             print(f"Battery discharge power: {self.agent.battery.Pdis}")
             fig_bat_char = plt.subplot(3, 1, 3)
             fig_bat_char.plot(range(24), self.agent.battery.Pdis)
+            plt.savefig(path + "figure/" + "batterie.png")
             plt.title(f"{self.agent.name}_Bat_Discharge")
             plt.show()
 
@@ -138,6 +139,7 @@ class Maison(Agent):
             fig_ev_char = plt.subplot(2, 1, 2)
             fig_ev_char.plot(range(24), self.agent.ev.Pchar)
             plt.title(f"{self.agent.name}_EV_Charge")
+            plt.savefig(path + "figure/" + "EV.png")
             plt.show()
 
 
@@ -164,6 +166,7 @@ class Maison(Agent):
             fig_pc = plt.subplot(2, 1, 2)
             fig_pc.plot(range(24), self.agent.production_excess, marker='o')
             plt.title(f"{self.agent.name}_Production excess")
+            plt.savefig(path + "figure/" + "excess.png")
             plt.show()
 
         async def on_end(self) -> None:
@@ -291,7 +294,7 @@ class Maison(Agent):
 
 
 async def main():
-    home1 = Maison("spade02@jabbim.com", "123456")
+    home1 = Maison("spade03@jabbim.com", "123456")
     await home1.start()
     await spade.wait_until_finished(home1)
     await home1.stop()

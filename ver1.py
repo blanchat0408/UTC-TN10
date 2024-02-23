@@ -1,5 +1,3 @@
-# Without fuzzy logic
-
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
@@ -86,7 +84,7 @@ class Maison(Agent):
                 if 0 <= t < 8 or 19 < t <= 23:
                     self.agent.production.append(0)
                 elif 8 <= t <= 19:
-                    self.agent.production.append(randint(5, 6))
+                    self.agent.production.append(randint(2, 6))
 
             starttime = randint(7, 18)
             leavetime = randint(starttime + 1, 18)
@@ -280,7 +278,7 @@ class Maison(Agent):
         self.production = []
         self.consommation_excess = []  # P charge
         self.production_excess = []  # P discharge
-        self.add_behaviour(self.MkConnection())
+        self.add_behaviour(self.Initialization())
 
 
 async def main():

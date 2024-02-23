@@ -1,6 +1,3 @@
-# battery & EV with fuzzy logic
-# price of electricity & state of charge(SoC)
-
 from random import randint
 from ast import literal_eval
 import matplotlib.pyplot as plt
@@ -12,6 +9,8 @@ from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 
 from fuzzy import effi_dis, effi_char
 
+path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/"
+
 
 def devices(consommation: list, production: list, prixElec: list, prixVente: list, starttime: int, leavetime: int):
     class Battery:
@@ -22,7 +21,6 @@ def devices(consommation: list, production: list, prixElec: list, prixVente: lis
         SoC: list[float] = [0] * 24
         Pdis: list[float] = [0] * 24
         Pchar: list[float] = [0] * 24
-        Pdis_a_ev = [0] * 24
 
         def __init__(self):
             self.SoC[0] = randint(20, 30) / 100
@@ -44,14 +42,11 @@ def devices(consommation: list, production: list, prixElec: list, prixVente: lis
         if starttime <= t < leavetime and ev.SoC[t] < ev.SoCmax:
             if t == starttime:
                 ev.SoC[t] = randint(20, 80) / 100
-                ev.Pev_a_char_t = (1 - ev.SoC[t]) * ev.cap
 
             char_ev = effi_char(prixVente[t], ev.SoC[t], 8.7, 12.2, 16.2, 18.2)
 
-            if ev.Pev_a_char_t > 0:
-                ev.Pchar[t] = round(min(ev.Pmax, ev.Pev_a_char_t) * char_ev, 2)
-                ev.Pev_a_char_t -= ev.Pchar[t]
-                ev.SoC[t + 1] = round(ev.SoC[t] + ev.Pchar[t] / ev.cap, 2)
+            ev.Pchar[t] = round(min(ev.Pmax, (1 - ev.SoC[t]) * ev.cap) * char_ev, 2)
+            ev.SoC[t + 1] = round(ev.SoC[t] + ev.Pchar[t] / ev.cap, 2)
 
         diff[t] = production[t] - consommation[t] - ev.Pchar[t]
 
@@ -110,6 +105,7 @@ class Maison(Agent):
             fig_p = plt.subplot(2, 1, 2)
             fig_p.plot(range(24), self.agent.production)
             plt.title(f"{self.agent.name}_Production")
+            plt.savefig(path + "figure/" + "profil.png")
             plt.show()
 
             fig_de_battery = plt.figure("batterie")
@@ -126,6 +122,7 @@ class Maison(Agent):
             fig_bat_char = plt.subplot(3, 1, 3)
             fig_bat_char.plot(range(24), self.agent.battery.Pdis)
             plt.title(f"{self.agent.name}_Bat_Discharge")
+            plt.savefig(path + "figure/" + "batterie.png")
             plt.show()
 
             # figure de EV
@@ -138,6 +135,7 @@ class Maison(Agent):
             fig_ev_char = plt.subplot(2, 1, 2)
             fig_ev_char.plot(range(24), self.agent.ev.Pchar)
             plt.title(f"{self.agent.name}_EV_Charge")
+            plt.savefig(path + "figure/" + "EV.png")
             plt.show()
 
             # consommation excess & production excess
@@ -149,6 +147,7 @@ class Maison(Agent):
                 else:
                     self.agent.consommation_excess.append(0)
                     self.agent.production_excess.append(round(diff - self.agent.battery.Pchar[t], 2))
+
 
             fig_a_envoyer = plt.figure("excess")
             # print(f"Battery discharge: {self.agent.battery.Pdis}")
@@ -163,6 +162,7 @@ class Maison(Agent):
             fig_pc = plt.subplot(2, 1, 2)
             fig_pc.plot(range(24), self.agent.production_excess, marker='o')
             plt.title(f"{self.agent.name}_Production excess")
+            plt.savefig(path + "figure/" + "excess.png")
             plt.show()
 
         async def on_end(self) -> None:
@@ -187,12 +187,13 @@ class Maison(Agent):
                                               "Consumption excess", "¨Production excess"],
                                        columns=range(24))
             # print(data_profil)
-            path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/{self.agent.name}.xlsx"
-            if os.path.isfile(path):
-                with pd.ExcelWriter(path, mode="a", if_sheet_exists='new') as writer:
+            # path = f"D:/Users/shiguang/Documents/Stage202309_SHI_Guangyu/data_stage/{self.agent.name}.xlsx"
+            path_data = path +  f"{self.agent.name}.xlsx"
+            if os.path.isfile(path_data):
+                with pd.ExcelWriter(path_data, mode="a", if_sheet_exists='new') as writer:
                     data_profil.to_excel(writer)
             else:
-                data_profil.to_excel(path, float_format="%.2f")
+                data_profil.to_excel(path_data, float_format="%.2f")
 
     class MkConnection(OneShotBehaviour):
         async def run(self) -> None:
